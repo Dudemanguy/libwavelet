@@ -83,9 +83,17 @@ void wavelet_transform(struct wavelet wave, double complex *z, int len) {
 		}
 	}
 	int n = pow(2, expt);
+	double complex *signal = (double complex *)malloc(sizeof(double complex)*n);
+	for (int i = 0; i < n; ++i) {
+		if (i > len) {
+			signal[i] = 0 + 0*I;
+		} else {
+			signal[i] = z[i];
+		}
+	}
 	//transform signal to frequency space
-	complex double *tmp = (complex double *)malloc(sizeof(complex double)*n);
-	fft(z, n, tmp);
+	double complex *tmp = (double complex *)malloc(sizeof(double complex)*n);
+	fft(signal, n, tmp);
 	double period = 1/wave.srate;
 	double *time = (double *)malloc(sizeof(double)*n);
 	for (int i = 0; i < n; ++i) {
@@ -114,7 +122,7 @@ void wavelet_transform(struct wavelet wave, double complex *z, int len) {
 	fft(wave_tmp, n, tmp);
 	wave.transform = (double complex *)malloc(sizeof(double complex)*n);
 	for (int i = 0; i < n; ++i) {
-		wave.transform[i] = complex_multiply(z[i], wave_tmp[i]);
+		wave.transform[i] = complex_multiply(signal[i], wave_tmp[i]);
 	}
 	//transform back to time space
 	ifft(wave.transform, n, tmp);
