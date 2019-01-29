@@ -126,4 +126,8 @@ void wavelet_transform(struct wavelet wave, double complex *z, int len) {
 	}
 	//transform back to time space
 	ifft(wave.transform, n, tmp);
+	free(signal);
+	free(tmp);
+	free(time);
+	free(wave_tmp);
 }
