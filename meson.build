@@ -1,0 +1,6 @@
+project('libwavelet', 'c')
+cc = meson.get_compiler('c')
+m = cc.find_library('m')
+subdir('include')
+inc = include_directories('include')
+libwavelet = library('wavelet', 'wavelet.c', dependencies: [m], include_directories: inc, install: true)
