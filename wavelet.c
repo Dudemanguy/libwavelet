@@ -72,12 +72,12 @@ struct wavelet init_wavelet(char *type, double bwidth, double cfq, double srate)
 	return wave;
 }
 
-void wavelet_destroy(struct wavelet wave) {
-	free(wave.mother);
-	free(wave.transform);
+void wavelet_destroy(struct wavelet *wave) {
+	free(wave->mother);
+	free(wave->transform);
 }
 
-void wavelet_transform(struct wavelet wave, double complex *z, int len) {
+void wavelet_transform(struct wavelet *wave, double complex *z, int len) {
 	int expt = 0;
 	while (1) {
 		int total = pow(2, expt);
@@ -87,9 +87,9 @@ void wavelet_transform(struct wavelet wave, double complex *z, int len) {
 			++expt;
 		}
 	}
-	wave.n = pow(2, expt);
-	double complex *signal = (double complex *)malloc(sizeof(double complex)*wave.n);
-	for (int i = 0; i < wave.n; ++i) {
+	wave->n = pow(2, expt);
+	double complex *signal = (double complex *)malloc(sizeof(double complex)*wave->n);
+	for (int i = 0; i < wave->n; ++i) {
 		if (i > len) {
 			signal[i] = 0 + 0*I;
 		} else {
@@ -97,11 +97,11 @@ void wavelet_transform(struct wavelet wave, double complex *z, int len) {
 		}
 	}
 	//transform signal to frequency space
-	double complex *tmp = (double complex *)malloc(sizeof(double complex)*wave.n);
-	fft(signal, wave.n, tmp);
-	double period = 1/wave.srate;
-	double *time = (double *)malloc(sizeof(double)*wave.n);
-	for (int i = 0; i < wave.n; ++i) {
+	double complex *tmp = (double complex *)malloc(sizeof(double complex)*wave->n);
+	fft(signal, wave->n, tmp);
+	double period = 1/wave->srate;
+	double *time = (double *)malloc(sizeof(double)*wave->n);
+	for (int i = 0; i < wave->n; ++i) {
 		if (i == 0) {
 			time[i] = 0;
 		} else {
@@ -109,28 +109,28 @@ void wavelet_transform(struct wavelet wave, double complex *z, int len) {
 		}
 	}
 	//create mother wavelet
-	wave.mother = (double complex *)malloc(sizeof(double complex)*wave.n);
-	if (wave.type == MORL) {
-		for (int i = 0; i < wave.n; ++i) {
+	wave->mother = (double complex *)malloc(sizeof(double complex)*wave->n);
+	if (wave->type == MORL) {
+		for (int i = 0; i < wave->n; ++i) {
 			if (i > len) {
-				wave.mother[i] = 0;
+				wave->mother[i] = 0;
 			} else {
-				wave.mother[i] = (1/sqrt(M_PI*wave.bwidth))*cexp((-1*pow(time[i],2))/wave.bwidth)*cexp(-2*M_PI*I*wave.cfq*time[i]);
+				wave->mother[i] = (1/sqrt(M_PI*wave->bwidth))*cexp((-1*pow(time[i],2))/wave->bwidth)*cexp(-2*M_PI*I*wave->cfq*time[i]);
 			}
 		}
 	}
-	double complex *wave_tmp = (double complex *)malloc(sizeof(double complex)*wave.n);
-	for (int i = 0; i < wave.n; ++i) {
-		wave_tmp[i] = wave.mother[i];
+	double complex *wave_tmp = (double complex *)malloc(sizeof(double complex)*wave->n);
+	for (int i = 0; i < wave->n; ++i) {
+		wave_tmp[i] = wave->mother[i];
 	}
 	//transform mother wavelet to frequency space and multiply element-wise
-	fft(wave_tmp, wave.n, tmp);
-	wave.transform = (double complex *)malloc(sizeof(double complex)*wave.n);
-	for (int i = 0; i < wave.n; ++i) {
-		wave.transform[i] = complex_multiply(signal[i], wave_tmp[i]);
+	fft(wave_tmp, wave->n, tmp);
+	wave->transform = (double complex *)malloc(sizeof(double complex)*wave->n);
+	for (int i = 0; i < wave->n; ++i) {
+		wave->transform[i] = complex_multiply(signal[i], wave_tmp[i]);
 	}
 	//transform back to time space
-	ifft(wave.transform, wave.n, tmp);
+	ifft(wave->transform, wave->n, tmp);
 	free(signal);
 	free(tmp);
 	free(time);

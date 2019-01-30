@@ -30,7 +30,7 @@ struct wavelet init_wavelet(char *type, double bwidth, double cfq, double srate)
  * for z to be a power of 2. The output of the mother wavelet is stored in wave.mother
  * while the output of the transform is stored in wave.transform.
  */
-void wavelet_transform(struct wavelet wave, double complex *z, int len);
+void wavelet_transform(struct wavelet *wave, double complex *z, int len);
 
 enum wavelet_type {
 	MORL,
