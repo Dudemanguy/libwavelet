@@ -32,6 +32,11 @@ struct wavelet init_wavelet(char *type, double bwidth, double cfq, double srate)
  */
 void wavelet_transform(struct wavelet *wave, double complex *z, int len);
 
+/**
+ * Destroys memory allocated for the wave object.
+ */
+void wavelet_destroy(struct wavelet *wave);
+
 enum wavelet_type {
 	MORL,
 };
