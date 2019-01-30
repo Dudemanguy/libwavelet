@@ -78,16 +78,21 @@ void wavelet_destroy(struct wavelet *wave) {
 }
 
 void wavelet_transform(struct wavelet *wave, double complex *z, int len) {
-	int expt = 0;
-	while (1) {
-		int total = pow(2, expt);
-		if (total > len) {
-			break;
-		} else {
-			++expt;
+	double x = log2(len);
+	if (x == (int)x) {
+		wave->n = len;
+	} else {
+		int expt = 0;
+		while (1) {
+			int total = pow(2, expt);
+			if (total > len) {
+				break;
+			} else {
+				++expt;
+			}
 		}
+		wave->n = pow(2, expt);
 	}
-	wave->n = pow(2, expt);
 	double complex *signal = (double complex *)malloc(sizeof(double complex)*wave->n);
 	for (int i = 0; i < wave->n; ++i) {
 		if (i > len) {
