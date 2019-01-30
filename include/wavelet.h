@@ -41,6 +41,7 @@ struct wavelet {
 	double bwidth;
 	double cfq;
 	double srate;
+	int n;
 	double complex *mother;
 	double complex *transform;
 };
