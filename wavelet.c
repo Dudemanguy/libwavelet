@@ -14,158 +14,220 @@ double complex complex_multiply(double complex v, double complex w) {
 	return z;
 }
 
-void fft1(double complex *z, int n, double complex *tmp) {
-	if (n > 1) {
-		int k, m;
+void fft1(double complex *z, int len, double complex *tmp) {
+	if (len > 1) {
 		double complex w, *zo, *ze;
 		ze = tmp;
-		zo = tmp+n/2;
-		for (k = 0; k < n/2; ++k) {
+		zo = tmp+len/2;
+		for (int k = 0; k < len/2; ++k) {
 			ze[k] = z[2*k];
 			zo[k] = z[2*k+1];
 		}
-		fft1(ze, n/2, z);
-		fft1(zo, n/2, z);
-		for (m = 0; m < n/2; ++m) {
-			w = cexp((-2*M_PI*I*m)/(double)n);
+		fft1(ze, len/2, z);
+		fft1(zo, len/2, z);
+		for (int m = 0; m < len/2; ++m) {
+			w = cexp((-2*M_PI*I*m)/(double)len);
 			z[m] = ze[m] + w*zo[m];
-			z[m+n/2] = ze[m] - w*zo[m];
+			z[m+len/2] = ze[m] - w*zo[m];
 		}
 	}
 }
 
-void fft2(double complex **z, int n, double complex *tmp, int width) {
-	double complex *z_all = (double complex *)malloc(sizeof(double complex)*n);
+void fft2(double complex **z, int len, double complex *tmp, int width) {
+	double complex *z_all = (double complex *)malloc(sizeof(double complex)*len);
 	for (int i = 0; i < width; ++i) {
-		for (int j = 0; j < n; ++j) {
+		for (int j = 0; j < len; ++j) {
 			z_all[j] = z[j][i];
 		}
-		fft1(z_all, n, tmp);
-		for (int j = 0; j < n; ++j) {
+		fft1(z_all, len, tmp);
+		for (int j = 0; j < len; ++j) {
 			z[j][i] = z_all[j];
 		}
 	}
 	free(z_all);
 }
 
-void ifft_rec(double complex *z, int n, double complex *tmp) {
-	if (n > 1) {
+void ifft_rec(double complex *z, int len, double complex *tmp) {
+	if (len > 1) {
 		int k, m;
 		double complex w, *zo, *ze;
 		ze = tmp;
-		zo = tmp+n/2;
-		for (k = 0; k < n/2; ++k) {
+		zo = tmp+len/2;
+		for (k = 0; k < len/2; ++k) {
 			ze[k] = z[2*k];
 			zo[k] = z[2*k+1];
 		}
-		ifft_rec(ze, n/2, z);
-		ifft_rec(zo, n/2, z);
-		for (m = 0; m < n/2; ++m) {
-			w = cexp((2*M_PI*I*m)/(double)n);
+		ifft_rec(ze, len/2, z);
+		ifft_rec(zo, len/2, z);
+		for (m = 0; m < len/2; ++m) {
+			w = cexp((2*M_PI*I*m)/(double)len);
 			z[m] = ze[m] + w*zo[m];
-			z[m+n/2] = ze[m] - w*zo[m];
+			z[m+len/2] = ze[m] - w*zo[m];
 		}
 	}
 }
 
-void ifft1(double complex *z, int n, double complex *tmp) {
-	ifft_rec(z, n, tmp);
-	for (int i = 0; i < n; ++i) {
-		z[i] = (1/(double)n)*z[i];
+void ifft1(double complex *z, int len, double complex *tmp) {
+	ifft_rec(z, len, tmp);
+	for (int i = 0; i < len; ++i) {
+		z[i] = (1/(double)len)*z[i];
 	}
 }
 
-void ifft2(double complex **z, int n, double complex *tmp, int width) {
-	double complex *z_all = (double complex *)malloc(sizeof(double complex)*n);
+void ifft2(double complex **z, int len, double complex *tmp, int width) {
+	double complex *z_all = (double complex *)malloc(sizeof(double complex)*len);
 	for (int i = 0; i < width; ++i) {
-		for (int j = 0; j < n; ++j) {
+		for (int j = 0; j < len; ++j) {
 			z_all[j] = z[j][i];
 		}
-		ifft1(z_all, n, tmp);
-		for (int j = 0; j < n; ++j) {
+		ifft1(z_all, len, tmp);
+		for (int j = 0; j < len; ++j) {
 			z[j][i] = z_all[j];
 		}
 	}
 	free(z_all);
 }
 
-struct wavelet init_wavelet(char *type, double bwidth, double cfq, double srate) {
+int power_of_two(int len) {
+	double x = log2(len);
+	if (x == (int)x) {
+		return 1;
+	} else {
+		return 0;
+	}
+}
+
+struct wavelet init_wavelet(char *type, double bwidth, double cfq, double srate, int len, int width) {
 	struct wavelet wave;
+	if (!len) {
+		printf("Error, wavelet object has length 0. Please reinitialize the"
+				"wavelet with a nonzero power of two.\n");
+		return wave;
+	}
+	if (!power_of_two(len)) {
+		printf("Error, wavelet object must have a length equal to a nonzero"
+				"power of two.\n");
+		return wave;
+	}
 	wave.bwidth = bwidth;
 	wave.cfq = cfq;
 	wave.srate = srate;
+	wave.len = len;
+	wave.width = width;
 	if (strcmp(type, "morlet") == 0) {
 		wave.type = MORL;
 	}
 	return wave;
 }
 
-void wavelet_destroy(struct wavelet *wave) {
-	free(wave->mother);
-	free(wave->transform);
+double complex *wavelet_mother1(struct wavelet *wave, double *time) {
+	if (!wave) {
+		printf("Error, wavelet object must e initialized first with init_wavelet.\n");
+		return 0;
+	}
+	double complex *mother = (double complex *)malloc(sizeof(double complex)*wave->len);
+	if (wave->type == MORL) {
+		for (int i = 0; i < wave->len; ++i) {
+			mother[i] = (1/sqrt(M_PI*wave->bwidth))*cexp((-1*pow(time[i],2))/wave->bwidth)*
+				cexp(-2*M_PI*I*wave->cfq*time[i]);
+		}
+	}
+	return mother;
 }
 
-void wavelet_transform(struct wavelet *wave, double complex *z, int len) {
-	double x = log2(len);
-	if (x == (int)x) {
-		wave->n = len;
-	} else {
-		int expt = 0;
-		while (1) {
-			int total = pow(2, expt);
-			if (total > len) {
-				break;
-			} else {
-				++expt;
-			}
-		}
-		wave->n = pow(2, expt);
+double complex **wavelet_mother2(struct wavelet *wave, double *time) {
+	if (!wave) {
+		printf("Error, wavelet object must e initialized first with init_wavelet.\n");
+		return 0;
 	}
-	double complex *signal = (double complex *)malloc(sizeof(double complex)*wave->n);
-	for (int i = 0; i < wave->n; ++i) {
-		if (i > len) {
-			signal[i] = 0 + 0*I;
-		} else {
-			signal[i] = z[i];
-		}
+	double complex **mother = (double complex **)malloc(sizeof(double complex)*wave->len);
+	for (int i = 0; i < wave->len; ++i) {
+		mother[i] = (double complex *)malloc(sizeof(double complex)*wave->width);
 	}
-	//transform signal to frequency space
-	double complex *tmp = (double complex *)malloc(sizeof(double complex)*wave->n);
-	fft1(signal, wave->n, tmp);
-	double period = 1/wave->srate;
-	double *time = (double *)malloc(sizeof(double)*wave->n);
-	for (int i = 0; i < wave->n; ++i) {
-		if (i == 0) {
-			time[i] = 0;
-		} else {
-			time[i] = time[i-1] + period;
-		}
-	}
-	//create mother wavelet
-	wave->mother = (double complex *)malloc(sizeof(double complex)*wave->n);
 	if (wave->type == MORL) {
-		for (int i = 0; i < wave->n; ++i) {
-			if (i > len) {
-				wave->mother[i] = 0;
-			} else {
-				wave->mother[i] = (1/sqrt(M_PI*wave->bwidth))*cexp((-1*pow(time[i],2))/wave->bwidth)*cexp(-2*M_PI*I*wave->cfq*time[i]);
+		for (int i = 0; i < wave->width; ++i) {
+			for (int j = 0; j < wave->len; ++j) {
+				if ((time[j] == 0) && (j > 0)) {
+					mother[j][i] = 0 + 0*I;
+				} else {
+					mother[j][i] = (1/sqrt(M_PI*wave->bwidth))*cexp((-1*pow(time[j],2))/wave->bwidth)*
+						cexp(-2*M_PI*I*wave->cfq*time[j]);
+				}
 			}
 		}
 	}
-	double complex *wave_tmp = (double complex *)malloc(sizeof(double complex)*wave->n);
-	for (int i = 0; i < wave->n; ++i) {
-		wave_tmp[i] = wave->mother[i];
+	return mother;
+}
+
+double complex *wavelet_transform1(struct wavelet *wave, double complex *mother, double complex *z) {
+	//save a copy of the input
+	double complex *signal = (double complex *)malloc(sizeof(double complex)*wave->len);
+	for (int i = 0; i < wave->len; ++i) {
+		signal[i] = z[i];
+	}
+	double complex *tmp = (double complex *)malloc(sizeof(double complex)*wave->len);
+	fft1(signal, wave->len, tmp);
+	//save a copy of the mother wavelet
+	double complex *mother_tmp = (double complex *)malloc(sizeof(double complex)*wave->len);
+	for (int i = 0; i < wave->len; ++i) {
+		mother_tmp[i] = mother[i];
 	}
 	//transform mother wavelet to frequency space and multiply element-wise
-	fft1(wave_tmp, wave->n, tmp);
-	wave->transform = (double complex *)malloc(sizeof(double complex)*wave->n);
-	for (int i = 0; i < wave->n; ++i) {
-		wave->transform[i] = complex_multiply(signal[i], wave_tmp[i]);
+	fft1(mother_tmp, wave->len, tmp);
+	double complex *transform = (double complex *)malloc(sizeof(double complex)*wave->len);
+	for (int i = 0; i < wave->len; ++i) {
+		transform[i] = complex_multiply(signal[i], mother_tmp[i]);
 	}
 	//transform back to time space
-	ifft1(wave->transform, wave->n, tmp);
+	ifft1(transform, wave->len, tmp);
 	free(signal);
 	free(tmp);
-	free(time);
-	free(wave_tmp);
+	free(mother_tmp);
+	return transform;
+}
+
+double complex **wavelet_transform2(struct wavelet *wave, double complex **mother, double complex **z) {
+	//save a copy of the input
+	double complex **signal = (double complex **)malloc(sizeof(double complex)*wave->len);
+	for (int i = 0; i < wave->len; ++i) {
+		signal[i] = (double complex *)malloc(sizeof(double complex)*wave->width);
+	}
+	for (int i = 0; i < wave->width; ++i) {
+		for (int j = 0; j < wave->len; ++j) {
+			signal[j][i] = z[j][i];
+		}
+	}
+	double complex *tmp = (double complex *)malloc(sizeof(double complex)*wave->len);
+	fft2(signal, wave->len, tmp, wave->width);
+	//save a copy of the mother wavelet
+	double complex **mother_tmp = (double complex **)malloc(sizeof(double complex)*wave->len);
+	for (int i = 0; i < wave->len; ++i) {
+		mother_tmp[i] = (double complex *)malloc(sizeof(double complex)*wave->width);
+	}
+	for (int i = 0; i < wave->width; ++i) {
+		for (int j = 0; j < wave->len; ++j) {
+			mother_tmp[j][i] = mother[j][i];
+		}
+	}
+	//transform mother wavelet to frequency space and multiple element-wise
+	fft2(mother_tmp, wave->len, tmp, wave->width);
+	double complex **transform = (double complex **)malloc(sizeof(double complex)*wave->len);
+	for (int i = 0; i < wave->len; ++i) {
+		transform[i] = (double complex *)malloc(sizeof(double complex)*wave->width);
+	}
+	for (int i = 0; i < wave->width; ++i) {
+		for (int j = 0; j < wave->len; ++j) {
+			transform[j][i] = complex_multiply(signal[j][i], mother_tmp[j][i]);
+		}
+	}
+	//transform back to time space
+	ifft2(transform, wave->len, tmp, wave->width);
+	for (int i = 0; i < wave->len; ++i) {
+		free(signal[i]);
+		free(mother_tmp[i]);
+	}
+	free(signal);
+	free(mother_tmp);
+	free(tmp);
+	return transform;
 }
