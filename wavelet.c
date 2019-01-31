@@ -14,7 +14,7 @@ double complex complex_multiply(double complex v, double complex w) {
 	return z;
 }
 
-void fft(double complex *z, int n, double complex *tmp) {
+void fft1(double complex *z, int n, double complex *tmp) {
 	if (n > 1) {
 		int k, m;
 		double complex w, *zo, *ze;
@@ -24,14 +24,28 @@ void fft(double complex *z, int n, double complex *tmp) {
 			ze[k] = z[2*k];
 			zo[k] = z[2*k+1];
 		}
-		fft(ze, n/2, z);
-		fft(zo, n/2, z);
+		fft1(ze, n/2, z);
+		fft1(zo, n/2, z);
 		for (m = 0; m < n/2; ++m) {
 			w = cexp((-2*M_PI*I*m)/(double)n);
 			z[m] = ze[m] + w*zo[m];
 			z[m+n/2] = ze[m] - w*zo[m];
 		}
 	}
+}
+
+void fft2(double complex **z, int n, double complex *tmp, int width) {
+	double complex *z_all = (double complex *)malloc(sizeof(double complex)*n);
+	for (int i = 0; i < width; ++i) {
+		for (int j = 0; j < n; ++j) {
+			z_all[j] = z[j][i];
+		}
+		fft1(z_all, n, tmp);
+		for (int j = 0; j < n; ++j) {
+			z[j][i] = z_all[j];
+		}
+	}
+	free(z_all);
 }
 
 void ifft_rec(double complex *z, int n, double complex *tmp) {
@@ -54,11 +68,25 @@ void ifft_rec(double complex *z, int n, double complex *tmp) {
 	}
 }
 
-void ifft(double complex *z, int n, double complex *tmp) {
+void ifft1(double complex *z, int n, double complex *tmp) {
 	ifft_rec(z, n, tmp);
 	for (int i = 0; i < n; ++i) {
 		z[i] = (1/(double)n)*z[i];
 	}
+}
+
+void ifft2(double complex **z, int n, double complex *tmp, int width) {
+	double complex *z_all = (double complex *)malloc(sizeof(double complex)*n);
+	for (int i = 0; i < width; ++i) {
+		for (int j = 0; j < n; ++j) {
+			z_all[j] = z[j][i];
+		}
+		ifft1(z_all, n, tmp);
+		for (int j = 0; j < n; ++j) {
+			z[j][i] = z_all[j];
+		}
+	}
+	free(z_all);
 }
 
 struct wavelet init_wavelet(char *type, double bwidth, double cfq, double srate) {
@@ -103,7 +131,7 @@ void wavelet_transform(struct wavelet *wave, double complex *z, int len) {
 	}
 	//transform signal to frequency space
 	double complex *tmp = (double complex *)malloc(sizeof(double complex)*wave->n);
-	fft(signal, wave->n, tmp);
+	fft1(signal, wave->n, tmp);
 	double period = 1/wave->srate;
 	double *time = (double *)malloc(sizeof(double)*wave->n);
 	for (int i = 0; i < wave->n; ++i) {
@@ -129,13 +157,13 @@ void wavelet_transform(struct wavelet *wave, double complex *z, int len) {
 		wave_tmp[i] = wave->mother[i];
 	}
 	//transform mother wavelet to frequency space and multiply element-wise
-	fft(wave_tmp, wave->n, tmp);
+	fft1(wave_tmp, wave->n, tmp);
 	wave->transform = (double complex *)malloc(sizeof(double complex)*wave->n);
 	for (int i = 0; i < wave->n; ++i) {
 		wave->transform[i] = complex_multiply(signal[i], wave_tmp[i]);
 	}
 	//transform back to time space
-	ifft(wave->transform, wave->n, tmp);
+	ifft1(wave->transform, wave->n, tmp);
 	free(signal);
 	free(tmp);
 	free(time);
