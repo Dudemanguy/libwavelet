@@ -7,7 +7,7 @@
  * the width of the array is required.
  */
 void fft1(double complex *z, int len, double complex *tmp);
-void fft2(double complex **z, int len, double complex *tmp, int width);
+void fft2(double complex **z, int len, double complex **tmp, int width);
 
 /**
  * Executes the inverse fast fourier transform on the double complex array, z. 
@@ -18,7 +18,7 @@ void fft2(double complex **z, int len, double complex *tmp, int width);
  * the width of the array is required.
  */
 void ifft1(double complex *z, int len, double complex *tmp);
-void ifft2(double complex **z, int len, double complex *tmp, int width);
+void ifft2(double complex **z, int len, double complex **tmp, int width);
 
 /**
  * Initiates the wavelet object. Currently, the only supported type is "morlet", 
