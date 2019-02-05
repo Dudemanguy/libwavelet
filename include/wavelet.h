@@ -1,24 +1,26 @@
 /**
  * Executes the fast fourier transform on the double complex array, z. 
- * z must be padded with zeros to be exactly the length of a power of 2. n is
- * merely the length of v. tmp is a temporary array with allocated memory of size
- * n for computational purposes. fft1 is the one dimensional transform and fft2
- * is the two dimensional transform. For fft2, an extra parameter specifying
- * the width of the array is required.
+ * z must be padded with zeros to be exactly the length of a power of 2 (for radix-2)
+ * or 4 (for radix-4). n is merely the length of v. tmp is a temporary array with
+ * allocated memory of size n for computational purposes. fft1 is the one dimensional
+ * transform and fft2 is the two dimensional transform. For fft2, an extra parameter
+ * specifying the width of the array is required. The radix-2 and radix-4 implementations
+ * of each dimension are provided. In general, radix-4 should be slightly faster
+ * althought the differences do not become obvious until len becomes very large.
  */
-void fft1(double complex *z, int len, double complex *tmp);
-void fft2(double complex **z, int len, double complex **tmp, int width);
+void fft1_radix2(double complex *z, int len, double complex *tmp);
+void fft1_radix4(double complex *z, int len, double complex *tmp);
+void fft2_radix2(double complex **z, int len, double complex **tmp, int width);
+void fft2_radix4(double complex **z, int len, double complex **tmp, int width);
 
 /**
  * Executes the inverse fast fourier transform on the double complex array, z. 
- * z must be padded with zeros to be exactly the length of a power of 2. n is
- * merely the length of v. tmp is a temporary array with allocated memory of size
- * n for computational purposes. ifft1 is the one dimensional transform and ifft2
- * is the two dimensional transform. For ifft2, an extra parameter specifying
- * the width of the array is required.
+ * All options are exactly the same as the fft set of functions.
  */
-void ifft1(double complex *z, int len, double complex *tmp);
-void ifft2(double complex **z, int len, double complex **tmp, int width);
+void ifft1_radix2(double complex *z, int len, double complex *tmp);
+void ifft1_radix4(double complex *z, int len, double complex *tmp);
+void ifft2_radix2(double complex **z, int len, double complex **tmp, int width);
+void ifft2_radix4(double complex **z, int len, double complex **tmp, int width);
 
 /**
  * Initiates the wavelet object. Currently, the only supported type is "morlet", 
@@ -45,7 +47,9 @@ double complex **wavelet_mother2(struct wavelet *wave, double *time);
  * Returns either the one or two dimensional wavelet transformation.
  * The wavelet object must be initialized first. A morlet mother wavelet may be 
  * obtained via the wavelet_mother functions. However, using a custom mother
- * arrray generated on your own is also valid. 
+ * arrray generated on your own is also valid. Currently, the wavelet
+ * transformation functions use the radix2 variant of the fft/iffts 
+ * algorithms. This will be configurable in the future.
  */
 double complex *wavelet_transform1(struct wavelet *wave, double complex *mother, double complex *z);
 double complex **wavelet_transform2(struct wavelet *wave, double complex **mother, double complex **z);
@@ -59,6 +63,7 @@ struct wavelet {
 	double bwidth;
 	double cfq;
 	double srate;
+	int error;
 	int len;
 	int width;
 };

@@ -14,17 +14,17 @@ double complex complex_multiply(double complex v, double complex w) {
 	return z;
 }
 
-void fft1(double complex *z, int len, double complex *tmp) {
+void fft1_radix2(double complex *z, int len, double complex *tmp) {
 	if (len > 1) {
-		double complex w, *zo, *ze;
+		double complex w, *ze, *zo;
 		ze = tmp;
 		zo = tmp+len/2;
 		for (int k = 0; k < len/2; ++k) {
 			ze[k] = z[2*k];
 			zo[k] = z[2*k+1];
 		}
-		fft1(ze, len/2, z);
-		fft1(zo, len/2, z);
+		fft1_radix2(ze, len/2, z);
+		fft1_radix2(zo, len/2, z);
 		for (int m = 0; m < len/2; ++m) {
 			w = cexp((-2*M_PI*I*m)/(double)len);
 			z[m] = ze[m] + w*zo[m];
@@ -33,7 +33,36 @@ void fft1(double complex *z, int len, double complex *tmp) {
 	}
 }
 
-void fft2(double complex **z, int len, double complex **tmp, int width) {
+void fft1_radix4(double complex *z, int len, double complex *tmp) {
+	if (len > 1) {
+		double complex w1, w2, w3, *z0, *z1, *z2, *z3;
+		z0 = tmp;
+		z1 = tmp+len/4;
+		z2 = tmp+len/2;
+		z3 = tmp+(3*len)/4;
+		for (int k = 0; k < len/4; ++k) {
+			z0[k] = z[4*k];
+			z1[k] = z[4*k+1];
+			z2[k] = z[4*k+2];
+			z3[k] = z[4*k+3];
+		}
+		fft1_radix4(z0, len/4, z);
+		fft1_radix4(z1, len/4, z);
+		fft1_radix4(z2, len/4, z);
+		fft1_radix4(z3, len/4, z);
+		for (int m = 0; m < len/4; ++m) {
+			w1 = cexp((-2*M_PI*I*(m))/(double)len);
+			w2 = cexp((-2*M_PI*I*(2*m))/(double)len);
+			w3 = cexp((-2*M_PI*I*(3*m))/(double)len);
+			z[m] = z0[m] + w1*z1[m] + w2*z2[m] + w3*z3[m];
+			z[m+len/4] = z0[m] - I*w1*z1[m] - w2*z2[m] + I*w3*z3[m];
+			z[m+len/2] = z0[m] - w1*z1[m] + w2*z2[m] - w3*z3[m];
+			z[m+(3*len)/4] = z0[m] + I*w1*z1[m] - w2*z2[m] - I*w3*z3[m];
+		}
+	}
+}
+
+void fft2_radix2(double complex **z, int len, double complex **tmp, int width) {
 	if (len > 1) {
 		double complex w, **zo, **ze;
 		ze = tmp;
@@ -44,8 +73,8 @@ void fft2(double complex **z, int len, double complex **tmp, int width) {
 				zo[k][n] = z[2*k+1][n];
 			}
 		}
-		fft2(ze, len/2, z, width);
-		fft2(zo, len/2, z, width);
+		fft2_radix2(ze, len/2, z, width);
+		fft2_radix2(zo, len/2, z, width);
 		for (int m = 0; m < len/2; ++m) {
 			w = cexp((-2*M_PI*I*m)/(double)len);
 			for (int n = 0; n < width; ++n) {
@@ -56,7 +85,40 @@ void fft2(double complex **z, int len, double complex **tmp, int width) {
 	}
 }
 
-void ifft1_rec(double complex *z, int len, double complex *tmp) {
+void fft2_radix4(double complex **z, int len, double complex **tmp, int width) {
+	if (len > 1) {
+		double complex w1, w2, w3, **z0, **z1, **z2, **z3;
+		z0 = tmp;
+		z1 = tmp+len/4;
+		z2 = tmp+len/2;
+		z3 = tmp+(3*len)/4;
+		for (int k = 0; k < len/4; ++k) {
+			for (int n = 0; n < width; ++n) {
+				z0[k][n] = z[4*k][n];
+				z1[k][n] = z[4*k+1][n];
+				z2[k][n] = z[4*k+2][n];
+				z3[k][n] = z[4*k+3][n];
+			}
+		}
+		fft2_radix4(z0, len/4, z, width);
+		fft2_radix4(z1, len/4, z, width);
+		fft2_radix4(z2, len/4, z, width);
+		fft2_radix4(z3, len/4, z, width);
+		for (int m = 0; m < len/4; ++m) {
+			w1 = cexp((-2*M_PI*I*(m))/(double)len);
+			w2 = cexp((-2*M_PI*I*(2*m))/(double)len);
+			w3 = cexp((-2*M_PI*I*(3*m))/(double)len);
+			for (int n = 0; n < width; ++n) {
+				z[m][n] = z0[m][n] + w1*z1[m][n] + w2*z2[m][n] + w3*z3[m][n];
+				z[m+len/4][n] = z0[m][n] - I*w1*z1[m][n] - w2*z2[m][n] + I*w3*z3[m][n];
+				z[m+len/2][n] = z0[m][n] - w1*z1[m][n] + w2*z2[m][n] - w3*z3[m][n];
+				z[m+(3*len)/4][n] = z0[m][n] + I*w1*z1[m][n] - w2*z2[m][n] - I*w3*z3[m][n];
+			}
+		}
+	}
+}
+
+void ifft1_rrad2(double complex *z, int len, double complex *tmp) {
 	if (len > 1) {
 		int k, m;
 		double complex w, *zo, *ze;
@@ -66,8 +128,8 @@ void ifft1_rec(double complex *z, int len, double complex *tmp) {
 			ze[k] = z[2*k];
 			zo[k] = z[2*k+1];
 		}
-		ifft1_rec(ze, len/2, z);
-		ifft1_rec(zo, len/2, z);
+		ifft1_rrad2(ze, len/2, z);
+		ifft1_rrad2(zo, len/2, z);
 		for (m = 0; m < len/2; ++m) {
 			w = cexp((2*M_PI*I*m)/(double)len);
 			z[m] = ze[m] + w*zo[m];
@@ -76,7 +138,36 @@ void ifft1_rec(double complex *z, int len, double complex *tmp) {
 	}
 }
 
-void ifft2_rec(double complex **z, int len, double complex **tmp, int width) {
+void ifft1_rrad4(double complex *z, int len, double complex *tmp) {
+	if (len > 1) {
+		double complex w1, w2, w3, *z0, *z1, *z2, *z3;
+		z0 = tmp;
+		z1 = tmp+len/4;
+		z2 = tmp+len/2;
+		z3 = tmp+(3*len)/4;
+		for (int k = 0; k < len/4; ++k) {
+			z0[k] = z[4*k];
+			z1[k] = z[4*k+1];
+			z2[k] = z[4*k+2];
+			z3[k] = z[4*k+3];
+		}
+		ifft1_rrad4(z0, len/4, z);
+		ifft1_rrad4(z1, len/4, z);
+		ifft1_rrad4(z2, len/4, z);
+		ifft1_rrad4(z3, len/4, z);
+		for (int m = 0; m < len/4; ++m) {
+			w1 = cexp((2*M_PI*I*(m))/(double)len);
+			w2 = cexp((2*M_PI*I*(2*m))/(double)len);
+			w3 = cexp((2*M_PI*I*(3*m))/(double)len);
+			z[m] = z0[m] + w1*z1[m] + w2*z2[m] + w3*z3[m];
+			z[m+len/4] = z0[m] + I*w1*z1[m] - w2*z2[m] - I*w3*z3[m];
+			z[m+len/2] = z0[m] - w1*z1[m] + w2*z2[m] - w3*z3[m];
+			z[m+(3*len)/4] = z0[m] - I*w1*z1[m] - w2*z2[m] + I*w3*z3[m];
+		}
+	}
+}
+
+void ifft2_rrad2(double complex **z, int len, double complex **tmp, int width) {
 	if (len > 1) {
 		double complex w, **zo, **ze;
 		ze = tmp;
@@ -87,11 +178,11 @@ void ifft2_rec(double complex **z, int len, double complex **tmp, int width) {
 				zo[k][n] = z[2*k+1][n];
 			}
 		}
-		ifft2_rec(ze, len/2, z, width);
-		ifft2_rec(zo, len/2, z, width);
+		ifft2_rrad2(ze, len/2, z, width);
+		ifft2_rrad2(zo, len/2, z, width);
 		for (int m = 0; m < len/2; ++m) {
 			w = cexp((2*M_PI*I*m)/(double)len);
-			for  (int n = 0; n < width; ++n) {
+			for (int n = 0; n < width; ++n) {
 				z[m][n] = ze[m][n] + w*zo[m][n];
 				z[m+len/2][n] = ze[m][n] - w*zo[m][n];
 			}
@@ -99,15 +190,64 @@ void ifft2_rec(double complex **z, int len, double complex **tmp, int width) {
 	}
 }
 
-void ifft1(double complex *z, int len, double complex *tmp) {
-	ifft1_rec(z, len, tmp);
+void ifft2_rrad4(double complex **z, int len, double complex **tmp, int width) {
+	if (len > 1) {
+		double complex w1, w2, w3, **z0, **z1, **z2, **z3;
+		z0 = tmp;
+		z1 = tmp+len/4;
+		z2 = tmp+len/2;
+		z3 = tmp+(3*len)/4;
+		for (int k = 0; k < len/4; ++k) {
+			for (int n = 0; n < width; ++n) {
+				z0[k][n] = z[4*k][n];
+				z1[k][n] = z[4*k+1][n];
+				z2[k][n] = z[4*k+2][n];
+				z3[k][n] = z[4*k+3][n];
+			}
+		}
+		ifft2_rrad4(z0, len/4, z, width);
+		ifft2_rrad4(z1, len/4, z, width);
+		ifft2_rrad4(z2, len/4, z, width);
+		ifft2_rrad4(z3, len/4, z, width);
+		for (int m = 0; m < len/4; ++m) {
+			w1 = cexp((2*M_PI*I*(m))/(double)len);
+			w2 = cexp((2*M_PI*I*(2*m))/(double)len);
+			w3 = cexp((2*M_PI*I*(3*m))/(double)len);
+			for (int n = 0; n < width; ++n) {
+				z[m][n] = z0[m][n] + w1*z1[m][n] + w2*z2[m][n] + w3*z3[m][n];
+				z[m+len/4][n] = z0[m][n] + I*w1*z1[m][n] - w2*z2[m][n] - I*w3*z3[m][n];
+				z[m+len/2][n] = z0[m][n] - w1*z1[m][n] + w2*z2[m][n] - w3*z3[m][n];
+				z[m+(3*len)/4][n] = z0[m][n] - I*w1*z1[m][n] - w2*z2[m][n] + I*w3*z3[m][n];
+			}
+		}
+	}
+}
+
+void ifft1_radix2(double complex *z, int len, double complex *tmp) {
+	ifft1_rrad2(z, len, tmp);
 	for (int i = 0; i < len; ++i) {
 		z[i] = (1/(double)len)*z[i];
 	}
 }
 
-void ifft2(double complex **z, int len, double complex **tmp, int width) {
-	ifft2_rec(z, len, tmp, width);
+void ifft1_radix4(double complex *z, int len, double complex *tmp) {
+	ifft1_rrad4(z, len, tmp);
+	for (int i = 0; i < len; ++i) {
+		z[i] = (1/(double)len)*z[i];
+	}
+}
+
+void ifft2_radix2(double complex **z, int len, double complex **tmp, int width) {
+	ifft2_rrad2(z, len, tmp, width);
+	for (int i = 0; i < len; ++i) {
+		for (int j = 0; j < width; ++j) {
+			z[i][j] = (1/(double)len)*z[i][j];
+		}
+	}
+}
+
+void ifft2_radix4(double complex **z, int len, double complex **tmp, int width) {
+	ifft2_rrad4(z, len, tmp, width);
 	for (int i = 0; i < len; ++i) {
 		for (int j = 0; j < width; ++j) {
 			z[i][j] = (1/(double)len)*z[i][j];
@@ -129,11 +269,13 @@ struct wavelet init_wavelet(char *type, double bwidth, double cfq, double srate,
 	if (!len) {
 		printf("Error, wavelet object has length 0. Please reinitialize the"
 				"wavelet with a nonzero power of two.\n");
+		wave.error = 1;
 		return wave;
 	}
 	if (!power_of_two(len)) {
 		printf("Error, wavelet object must have a length equal to a nonzero"
 				"power of two.\n");
+		wave.error = 1;
 		return wave;
 	}
 	wave.bwidth = bwidth;
@@ -187,22 +329,18 @@ double complex **wavelet_mother2(struct wavelet *wave, double *time) {
 }
 
 double complex *wavelet_transform1(struct wavelet *wave, double complex *mother, double complex *z) {
-	//save a copy of the input
 	double complex *signal = (double complex *)malloc(sizeof(double complex)*wave->len);
 	memcpy(signal, z, wave->len*sizeof(&z));
 	double complex *tmp = (double complex *)malloc(sizeof(double complex)*wave->len);
-	fft1(signal, wave->len, tmp);
-	//save a copy of the mother wavelet
+	fft1_radix2(signal, wave->len, tmp);
 	double complex *mother_tmp = (double complex *)malloc(sizeof(double complex)*wave->len);
 	memcpy(mother_tmp, mother, wave->len*sizeof(&mother));
-	//transform mother wavelet to frequency space and multiply element-wise
-	fft1(mother_tmp, wave->len, tmp);
+	fft1_radix2(mother_tmp, wave->len, tmp);
 	double complex *transform = (double complex *)malloc(sizeof(double complex)*wave->len);
 	for (int i = 0; i < wave->len; ++i) {
 		transform[i] = complex_multiply(signal[i], mother_tmp[i]);
 	}
-	//transform back to time space
-	ifft1(transform, wave->len, tmp);
+	ifft1_radix2(transform, wave->len, tmp);
 	free(signal);
 	free(tmp);
 	free(mother_tmp);
@@ -210,7 +348,6 @@ double complex *wavelet_transform1(struct wavelet *wave, double complex *mother,
 }
 
 double complex **wavelet_transform2(struct wavelet *wave, double complex **mother, double complex **z) {
-	//save a copy of the input
 	double complex **signal = (double complex **)malloc(sizeof(double complex *)*wave->len);
 	for (int i = 0; i < wave->len; ++i) {
 		signal[i] = (double complex *)malloc(sizeof(double complex)*wave->width);
@@ -220,15 +357,13 @@ double complex **wavelet_transform2(struct wavelet *wave, double complex **mothe
 	for (int i = 0; i < wave->len; ++i) {
 		tmp[i] = (double complex *)malloc(sizeof(double complex)*wave->width);
 	}
-	fft2(signal, wave->len, tmp, wave->width);
-	//save a copy of the mother wavelet
+	fft2_radix2(signal, wave->len, tmp, wave->width);
 	double complex **mother_tmp = (double complex **)malloc(sizeof(double complex *)*wave->len);
 	for (int i = 0; i < wave->len; ++i) {
 		mother_tmp[i] = (double complex *)malloc(sizeof(double complex)*wave->width);
 	}
 	memcpy(mother_tmp, mother, wave->len*sizeof(&mother));
-	//transform mother wavelet to frequency space and multiple element-wise
-	fft2(mother_tmp, wave->len, tmp, wave->width);
+	fft2_radix2(mother_tmp, wave->len, tmp, wave->width);
 	double complex **transform = (double complex **)malloc(sizeof(double complex *)*wave->len);
 	for (int i = 0; i < wave->len; ++i) {
 		transform[i] = (double complex *)malloc(sizeof(double complex)*wave->width);
@@ -238,8 +373,7 @@ double complex **wavelet_transform2(struct wavelet *wave, double complex **mothe
 			transform[j][i] = complex_multiply(signal[j][i], mother_tmp[j][i]);
 		}
 	}
-	//transform back to time space
-	ifft2(transform, wave->len, tmp, wave->width);
+	ifft2_radix2(transform, wave->len, tmp, wave->width);
 	for (int i = 0; i < wave->len; ++i) {
 		free(signal[i]);
 		free(mother_tmp[i]);
