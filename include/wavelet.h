@@ -27,7 +27,7 @@ void ifft2_radix4(double complex **z, int len, double complex **tmp, int width);
  * but more may be added in the future. bdwidth is the bandwith parameter of a
  * wavelet which dilates/compresses the signal. cfq is the central frequency of 
  * the wavelet. srate is the sample rate of the input signal. len is required
- * and must be equal to a power of two or else the function will return an error.
+ * and must be equal to a power of two or four or else the function will return an error.
  * For a one dimensional transform, simply pass width as 0. For two dimensions, 
  * make width equal to the width of your input signal.
  */
@@ -47,12 +47,13 @@ double complex **wavelet_mother2(struct wavelet *wave, double *time);
  * Returns either the one or two dimensional wavelet transformation.
  * The wavelet object must be initialized first. A morlet mother wavelet may be 
  * obtained via the wavelet_mother functions. However, using a custom mother
- * arrray generated on your own is also valid. Currently, the wavelet
- * transformation functions use the radix2 variant of the fft/iffts 
- * algorithms. This will be configurable in the future.
+ * arrray generated on your own is also valid. The radix parameter tells 
+ * the backend functions to choose from either the radix-2 algorithm or the
+ * radix-4 algorithm (2 and 4 respectively). If any other value is entered,
+ * wavelet_transform will default to radix-2.
  */
-double complex *wavelet_transform1(struct wavelet *wave, double complex *mother, double complex *z);
-double complex **wavelet_transform2(struct wavelet *wave, double complex **mother, double complex **z);
+double complex *wavelet_transform1(struct wavelet *wave, double complex *mother, double complex *z, int radix);
+double complex **wavelet_transform2(struct wavelet *wave, double complex **mother, double complex **z, int radix);
 
 enum wavelet_type {
 	MORL,

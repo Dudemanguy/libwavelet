@@ -118,6 +118,24 @@ void fft2_radix4(double complex **z, int len, double complex **tmp, int width) {
 	}
 }
 
+void fft1(double complex *z, int len, double complex *tmp, int radix) {
+	if (radix == 2) {
+		fft1_radix2(z, len, tmp);
+	}
+	if (radix == 4) {
+		fft1_radix4(z, len, tmp);
+	}
+}
+
+void fft2(double complex **z, int len, double complex **tmp, int width, int radix) {
+	if (radix == 2) {
+		fft2_radix2(z, len, tmp, width);
+	}
+	if (radix == 4) {
+		fft2_radix4(z, len, tmp, width);
+	}
+}
+
 void ifft1_rrad2(double complex *z, int len, double complex *tmp) {
 	if (len > 1) {
 		int k, m;
@@ -237,6 +255,15 @@ void ifft1_radix4(double complex *z, int len, double complex *tmp) {
 	}
 }
 
+void ifft1(double complex *z, int len, double complex *tmp, int radix) {
+	if (radix == 2) {
+		ifft1_radix2(z, len, tmp);
+	}
+	if (radix == 4) {
+		ifft1_radix4(z, len, tmp);
+	}
+}
+
 void ifft2_radix2(double complex **z, int len, double complex **tmp, int width) {
 	ifft2_rrad2(z, len, tmp, width);
 	for (int i = 0; i < len; ++i) {
@@ -255,9 +282,21 @@ void ifft2_radix4(double complex **z, int len, double complex **tmp, int width) 
 	}
 }
 
-int power_of_two(int len) {
+void ifft2(double complex **z, int len, double complex **tmp, int width, int radix) {
+	if (radix == 2) {
+		ifft2_radix2(z, len, tmp, width);
+	}
+	if (radix == 4) {
+		ifft2_radix4(z, len, tmp, width);
+	}
+}
+
+int power_of_two_or_four(int len) {
 	double x = log2(len);
+	double y = log(len)/log(4);
 	if (x == (int)x) {
+		return 1;
+	} else  if (y == (int)y) {
 		return 1;
 	} else {
 		return 0;
@@ -268,13 +307,13 @@ struct wavelet init_wavelet(char *type, double bwidth, double cfq, double srate,
 	struct wavelet wave;
 	if (!len) {
 		printf("Error, wavelet object has length 0. Please reinitialize the"
-				"wavelet with a nonzero power of two.\n");
+				"wavelet with a nonzero power of two or four.\n");
 		wave.error = 1;
 		return wave;
 	}
-	if (!power_of_two(len)) {
+	if (!power_of_two_or_four(len)) {
 		printf("Error, wavelet object must have a length equal to a nonzero"
-				"power of two.\n");
+				"power of two or four.\n");
 		wave.error = 1;
 		return wave;
 	}
@@ -328,26 +367,32 @@ double complex **wavelet_mother2(struct wavelet *wave, double *time) {
 	return mother;
 }
 
-double complex *wavelet_transform1(struct wavelet *wave, double complex *mother, double complex *z) {
+double complex *wavelet_transform1(struct wavelet *wave, double complex *mother, double complex *z, int radix) {
+	if (radix != 2 || radix != 4) {
+		radix = 2;
+	}
 	double complex *signal = (double complex *)malloc(sizeof(double complex)*wave->len);
 	memcpy(signal, z, wave->len*sizeof(&z));
 	double complex *tmp = (double complex *)malloc(sizeof(double complex)*wave->len);
-	fft1_radix2(signal, wave->len, tmp);
+	fft1(signal, wave->len, tmp, radix);
 	double complex *mother_tmp = (double complex *)malloc(sizeof(double complex)*wave->len);
 	memcpy(mother_tmp, mother, wave->len*sizeof(&mother));
-	fft1_radix2(mother_tmp, wave->len, tmp);
+	fft1(mother_tmp, wave->len, tmp, radix);
 	double complex *transform = (double complex *)malloc(sizeof(double complex)*wave->len);
 	for (int i = 0; i < wave->len; ++i) {
 		transform[i] = complex_multiply(signal[i], mother_tmp[i]);
 	}
-	ifft1_radix2(transform, wave->len, tmp);
+	ifft1(transform, wave->len, tmp, radix);
 	free(signal);
 	free(tmp);
 	free(mother_tmp);
 	return transform;
 }
 
-double complex **wavelet_transform2(struct wavelet *wave, double complex **mother, double complex **z) {
+double complex **wavelet_transform2(struct wavelet *wave, double complex **mother, double complex **z, int radix) {
+	if (radix != 2 || radix != 4) {
+		radix = 2;
+	}
 	double complex **signal = (double complex **)malloc(sizeof(double complex *)*wave->len);
 	for (int i = 0; i < wave->len; ++i) {
 		signal[i] = (double complex *)malloc(sizeof(double complex)*wave->width);
@@ -357,13 +402,13 @@ double complex **wavelet_transform2(struct wavelet *wave, double complex **mothe
 	for (int i = 0; i < wave->len; ++i) {
 		tmp[i] = (double complex *)malloc(sizeof(double complex)*wave->width);
 	}
-	fft2_radix2(signal, wave->len, tmp, wave->width);
+	fft2(signal, wave->len, tmp, wave->width, radix);
 	double complex **mother_tmp = (double complex **)malloc(sizeof(double complex *)*wave->len);
 	for (int i = 0; i < wave->len; ++i) {
 		mother_tmp[i] = (double complex *)malloc(sizeof(double complex)*wave->width);
 	}
 	memcpy(mother_tmp, mother, wave->len*sizeof(&mother));
-	fft2_radix2(mother_tmp, wave->len, tmp, wave->width);
+	fft2(mother_tmp, wave->len, tmp, wave->width, radix);
 	double complex **transform = (double complex **)malloc(sizeof(double complex *)*wave->len);
 	for (int i = 0; i < wave->len; ++i) {
 		transform[i] = (double complex *)malloc(sizeof(double complex)*wave->width);
@@ -373,7 +418,7 @@ double complex **wavelet_transform2(struct wavelet *wave, double complex **mothe
 			transform[j][i] = complex_multiply(signal[j][i], mother_tmp[j][i]);
 		}
 	}
-	ifft2_radix2(transform, wave->len, tmp, wave->width);
+	ifft2(transform, wave->len, tmp, wave->width, radix);
 	for (int i = 0; i < wave->len; ++i) {
 		free(signal[i]);
 		free(mother_tmp[i]);
