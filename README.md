@@ -1,5 +1,5 @@
 # libwavelet
-libwavelet is a very simple library for providing 1 and 2 dimensional wavelet transformation functions. Currently, only the Morlet mother wavelet function is provided. However, other wavelet types can be generated on their own and used with the transform function. Currently both the radix-2 and radix-4 algorithms are implement. They can be selected with the `wavelet_transform` function.
+libwavelet is a very simple library for providing 1 and 2 dimensional wavelet transformation functions. Currently, only the Morlet mother wavelet function is provided. However, other wavelet types can be generated on their own and used with the transform function. Currently both the radix-2 and radix-4 algorithms are implemented. They can be selected with the `wavelet_transform` function.
 
 ## Installation
 libwavelet uses meson for easy building and installation. After checking out the source, navigate to the directory, and then simply run.
