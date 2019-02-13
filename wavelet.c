@@ -372,11 +372,15 @@ double complex *wavelet_transform1(struct wavelet *wave, double complex *mother,
 		radix = 2;
 	}
 	double complex *signal = (double complex *)malloc(sizeof(double complex)*wave->len);
-	memcpy(signal, z, wave->len*sizeof(&z));
+	for (int i = 0; i < wave->len; ++i) {
+		signal[i] = z[i];
+	}
 	double complex *tmp = (double complex *)malloc(sizeof(double complex)*wave->len);
 	fft1(signal, wave->len, tmp, radix);
 	double complex *mother_tmp = (double complex *)malloc(sizeof(double complex)*wave->len);
-	memcpy(mother_tmp, mother, wave->len*sizeof(&mother));
+	for (int i = 0; i < wave->len; ++i) {
+		mother_tmp[i] = mother[i];
+	}
 	fft1(mother_tmp, wave->len, tmp, radix);
 	double complex *transform = (double complex *)malloc(sizeof(double complex)*wave->len);
 	for (int i = 0; i < wave->len; ++i) {
@@ -394,14 +398,28 @@ double complex **wavelet_transform2(struct wavelet *wave, double complex **mothe
 		radix = 2;
 	}
 	double complex **signal = (double complex **)malloc(sizeof(double complex *)*wave->len);
-	memcpy(signal, z, wave->len*sizeof(&z));
+	for (int i = 0; i < wave->len; ++i) {
+		signal[i] = (double complex *)malloc(sizeof(double complex)*wave->width);
+	}
+	for (int i = 0; i < wave->width; ++i) {
+		for (int j = 0; j < wave->len; ++j) {
+			signal[j][i] = z[j][i];
+		}
+	}
 	double complex **tmp = (double complex **)malloc(sizeof(double complex *)*wave->len);
 	for (int i = 0; i < wave->len; ++i) {
 		tmp[i] = (double complex *)malloc(sizeof(double complex)*wave->width);
 	}
 	fft2(signal, wave->len, tmp, wave->width, radix);
 	double complex **mother_tmp = (double complex **)malloc(sizeof(double complex *)*wave->len);
-	memcpy(mother_tmp, mother, wave->len*sizeof(&mother));
+	for (int i = 0; i < wave->len; ++i) {
+		mother_tmp[i] = (double complex *)malloc(sizeof(double complex)*wave->width);
+	}
+	for (int i = 0; i < wave->width; ++i) {
+		for (int j = 0; j < wave->len; ++j) {
+			mother_tmp[j][i] = mother[j][i];
+		}
+	}
 	fft2(mother_tmp, wave->len, tmp, wave->width, radix);
 	double complex **transform = (double complex **)malloc(sizeof(double complex *)*wave->len);
 	for (int i = 0; i < wave->len; ++i) {
@@ -414,6 +432,8 @@ double complex **wavelet_transform2(struct wavelet *wave, double complex **mothe
 	}
 	ifft2(transform, wave->len, tmp, wave->width, radix);
 	for (int i = 0; i < wave->len; ++i) {
+		free(mother_tmp[i]);
+		free(signal[i]);
 		free(tmp[i]);
 	}
 	free(mother_tmp);
