@@ -11,7 +11,7 @@ sudo ninja -C build install
 ```
 
 ## Usage
-libwavelet can be incorporated into your code in the usual way (i.e. `#include <wavelet.h>` and `gcc -lwavelet`). The [header](https://github.com/Dudemanguy911/libwavelet/blob/master/include/wavelet.h) shows available functions and brief descriptions. All `fft`, `ifft`, and `wavelet_transform` functions require the length of the array to be exactly equal to a power of two or four (or else an error is shown).
+libwavelet can be incorporated into your code in the usual way (i.e. `#include <wavelet.h>` and `gcc -lwavelet`). The [header](https://github.com/Dudemanguy/libwavelet/blob/master/include/wavelet.h) shows available functions and brief descriptions. All `fft`, `ifft`, and `wavelet_transform` functions require the length of the array to be exactly equal to a power of two or four (or else an error is shown).
 
 Consider creating a 1 dimensional Morlet transform with a bandwidth of 10 and a central frequency of 5 hz from a signal sampled at 2000 hz. First, create a double complex array, `z` (the imaginary part can be all zeros) that contains your signal. Then create a double array, `time`,  containing the time values of the signal.
 ```
